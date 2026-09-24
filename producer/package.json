@@ -1,0 +1,12 @@
+{
+  "name": "td-spark-producer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "INSA 4TC - Producteur de telemetrie reseau mobile (TD Apache Spark)",
+  "scripts": {
+    "generate": "node generate.js --out ../data/telemetrie.ndjson",
+    "generate:rapide": "node generate.js --rows 500000 --out ../data/telemetrie.ndjson",
+    "bench": "node bench-node.js ../data/telemetrie.ndjson"
+  },
+  "engines": { "node": ">=18" }
+}

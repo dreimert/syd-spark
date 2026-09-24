@@ -1,0 +1,8 @@
+{
+  "name": "td-spark-consumer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "INSA 4TC - Dashboard de supervision reseau (TD Apache Spark)",
+  "scripts": { "start": "node api.js" },
+  "engines": { "node": ">=18" }
+}

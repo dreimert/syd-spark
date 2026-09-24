@@ -1,0 +1,30 @@
+# INSA Lyon — 4TC — TD Apache Spark
+#
+#   docker compose up        démarre le TD → http://localhost:8888
+#   Ctrl-C, ou docker compose down, pour arrêter.
+
+services:
+  lab:
+    build: .
+    image: insa-4tc/td-spark:2.0
+    hostname: lab
+    volumes:
+      - .:/work             # le dépôt : vos modifications restent sur votre disque
+      - donnees:/work/data  # les données (~850 Mo) : dans un volume Docker, bien
+                            # plus rapide qu'un dossier partagé sous Windows et macOS
+    working_dir: /work
+    environment:
+      TD_MASTER: ${TD_MASTER:-local[*]}
+      TD_DRIVER_HOST: lab
+      PYTHONPATH: /work/lab
+    ports:
+      - "8888:8888"           # JupyterLab
+      - "4040-4043:4040-4043" # Spark UI (4040 ; 4041… si plusieurs sessions sont ouvertes)
+      - "3000:3000"           # tableau de bord de supervision (séquence 4)
+    command: >
+      jupyter lab --ip=0.0.0.0 --port=8888 --no-browser
+                  --allow-root --ServerApp.token='' --ServerApp.password=''
+                  --notebook-dir=/work
+
+volumes:
+  donnees:
