@@ -40,7 +40,8 @@ print("Enregistrements retenus :", f"{n:,}".replace(",", " "))
 
 # %% [markdown]
 # **Q2.1** Combien de jobs voyez-vous maintenant dans l'onglet *Jobs* ?
-# Combien de stages pour ce job ? Pourquoi ce nombre-là ?
+# Combien de stages pour ce job ? Pourquoi ce nombre-là ? Proposez une
+# explication : la section 2.2 vous permettra de la vérifier.
 
 # %% [markdown]
 # **Réponse Q2.1 :**
@@ -132,7 +133,6 @@ print(large.toDebugString().decode())
 # La première regroupe **toutes** les latences de chaque cellule, puis fait
 # la moyenne. La seconde transporte des couples `(somme, compte)` qu'on peut
 # additionner au fur et à mesure.
-
 #
 # **Avant de comparer : mettre les enregistrements en cache.** Les quatre
 # versions de la suite (A1, A2, puis B1, B2) partent toutes des lignes
@@ -146,6 +146,7 @@ print(large.toDebugString().decode())
 # il ne calcule rien. C'est le `count()` qui remplit le cache. Après la
 # cellule, l'onglet *Storage* de la Spark UI montre le RDD mis en cache et la
 # place qu'il occupe.
+
 # %%
 from pyspark.storagelevel import StorageLevel
 
@@ -239,8 +240,6 @@ metriques_stages(spark, n=4)
 #
 # Que transporte `groupByKey` ? Que transporte `reduceByKey` ?
 # Nommez le mécanisme responsable de l'écart.
-# *(Indice : l'un agrège côté émetteur avant d'expédier ; l'autre expédie tout
-# pour ne regrouper qu'à l'arrivée.)*
 #
 # **Q2.4** Pourquoi l'écart de durée est-il, lui, si faible ?
 # Sur quel support transite le shuffle en mode `local[*]` ? Que deviendrait
