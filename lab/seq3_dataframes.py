@@ -42,9 +42,27 @@ df.printSchema()
 df.show(3)
 
 # %% [markdown]
-# **Q3.1** D'où vient l'écart ? Combien de passes sur les données dans
-# chaque cas ? (Regardez l'onglet *Jobs*.) Que se passerait-il sur 2 To de
-# logs ?
+# **Quoi regarder dans la Spark UI.** Ouvrez l'onglet *Jobs* (vérifiez en
+# haut à droite que l'application s'appelle bien `4TC-seq3-dataframes` : sinon,
+# une session d'une séquence précédente est encore ouverte). Dans le tableau
+# *Completed Jobs*, chaque ligne est un job, c'est-à-dire un passage de Spark
+# sur des données. Trois colonnes suffisent :
+#
+# * **Description** : le libellé du `chrono` qui a lancé le job. Un job
+#   lancé hors `chrono` garde un nom interne, comme `showString` pour
+#   `df.show(3)`.
+# * **Duration** : le temps passé par ce job.
+# * **Tasks** : le nombre de tâches, une par morceau de fichier lu. Le job
+#   de `show(3)` n'en a qu'une : il ne lit que le début du fichier. Un job
+#   qui en a une par morceau a parcouru **tout** le fichier.
+#
+# Cherchez une ligne par `chrono` de la cellule ci-dessus. Un `chrono` qui
+# n'a lancé aucun job n'apparaît pas du tout : son absence est une réponse.
+# Cliquez sur la description d'un job pour voir ses stages.
+#
+# **Q3.1** D'où vient l'écart de durée entre les deux lectures ? Combien de
+# fois Spark lit-il le fichier dans chaque cas, en comptant le calcul que vous
+# lancerez ensuite sur `df` ? Que se passerait-il sur 2 To de logs ?
 
 # %% [markdown]
 # **Réponse Q3.1 :**

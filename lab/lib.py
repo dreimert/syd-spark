@@ -76,9 +76,20 @@ def session(nom, shuffle_partitions=8, aqe=False, broadcast=True):
 @contextmanager
 def chrono(libelle):
     """Mesure le temps mur d'un bloc. Attention : ne mesure quelque chose que
-    si le bloc contient une ACTION (count, collect, write, show...)."""
+    si le bloc contient une ACTION (count, collect, write, show...).
+
+    Les jobs lancés dans le bloc portent `libelle` comme description dans
+    l'onglet Jobs de la Spark UI, au lieu d'un nom interne illisible."""
+    from pyspark import SparkContext
+    sc = SparkContext._active_spark_context
+    if sc is not None:
+        sc.setJobDescription(libelle)
     t0 = time.perf_counter()
-    yield
+    try:
+        yield
+    finally:
+        if sc is not None:
+            sc.setJobDescription(None)
     print(f"  [chrono] {libelle:<46s} {time.perf_counter() - t0:7.2f} s")
 
 

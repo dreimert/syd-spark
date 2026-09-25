@@ -15,6 +15,63 @@ chronomètre**.
 
 ---
 
+## Apache Spark, en bref
+
+**Apache Spark** est un moteur de calcul distribué open source, né à Berkeley
+en 2009 et devenu l'outil standard pour traiter de gros volumes de données.
+Il sert quand une seule machine ne suffit plus, parce que les données ne
+tiennent pas en mémoire ou parce que le calcul serait trop long. Il répartit
+alors le travail sur les cœurs d'une machine ou sur les machines d'un cluster.
+Il succède à Hadoop MapReduce, dont il reprend le principe, mais il garde les
+résultats intermédiaires en mémoire au lieu de les écrire sur disque entre
+chaque étape.
+
+L'idée est simple : vous écrivez votre programme comme s'il manipulait une
+seule collection. Spark découpe cette collection en **partitions** et exécute
+le même code sur chacune, en parallèle, là où elle se trouve.
+
+```
+                 driver  (votre notebook Python)
+          construit le plan de calcul, le découpe en tâches
+             /                  |                  \
+       executor 1          executor 2          executor 3
+    partitions 1, 4       partitions 2, 5      partitions 3, 6
+```
+
+Le vocabulaire dont vous aurez besoin pour lire la Spark UI :
+
+| Terme | Ce que c'est |
+|---|---|
+| **Driver** | Le programme que vous écrivez (ici, le notebook). Il décrit le calcul, et Spark en déduit un plan qu'il distribue. |
+| **Executor** | Un processus qui fait le travail sur les données. Un cluster en compte des dizaines. |
+| **Partition** | Un morceau des données. C'est l'unité de parallélisme. |
+| **Tâche** (*task*) | Le traitement d'une partition par un executor, sur un cœur. |
+| **Stage** | Une suite de tâches qui s'enchaînent sans que les partitions aient besoin d'échanger des données. |
+| **Job** | Tout le travail déclenché par une demande de résultat (`count`, `collect`, `write`…). |
+
+Spark propose deux façons de programmer, que vous verrez dans cet ordre :
+
+* **les RDD** (*Resilient Distributed Dataset*, séquences 1 et 2) : une
+  collection d'objets découpée en partitions, à laquelle on
+  applique des fonctions (`map`, `filter`, `reduceByKey`), comme un tableau
+  JavaScript ;
+* **les DataFrames et SQL** (séquences 3 et 4) : une table avec un schéma, sur
+  laquelle on décrit une requête, et que Spark optimise lui-même.
+
+On utilise ici **PySpark**, l'interface Python de Spark. Le moteur, lui, est
+écrit en Scala et tourne dans une machine virtuelle Java : c'est pourquoi
+l'environnement contient Java.
+
+**Dans ce TD**, Spark tourne en mode `local[*]` : le driver et les executors
+partagent un seul processus sur votre portable, avec une tâche par cœur. Le même
+code tournerait sans modification sur un cluster ; seule l'adresse du *master*
+changerait (la variable `TD_MASTER` dans `docker-compose.yml`). Les secondes
+mesurées sur un portable ne se transposent pas à un cluster. Les octets
+échangés entre partitions, eux, se transposent, et c'est pourquoi le TD vous
+les fera relever.
+
+---
+
 ## Déroulé
 
 | Temps | Séquence | Fichier |
@@ -158,5 +215,5 @@ explication.
 
 ---
 
-*Environnement : PySpark 3.5 / Java 17 / Node.js 18 sous Docker. Jeu de
+*Environnement : PySpark 3.5 / Java 17 / Node.js 18 (scripts compatibles jusqu'à Node.js 26) sous Docker. Jeu de
 données synthétique déterministe, 5 000 000 d'événements, 87 cellules.*

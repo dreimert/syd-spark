@@ -35,7 +35,7 @@ Lancez Docker Desktop et attendez qu'il indique *Engine running*.
 ### 2. Récupérer le TD
 
 ```bash
-git clone <URL du dépôt communiquée par l'enseignant> td-spark
+git clone https://github.com/dreimert/syd-spark.git td-spark
 cd td-spark
 ```
 
@@ -87,6 +87,10 @@ docker compose up
 ```
 
 puis http://localhost:8888. C'est tout.
+
+L'énoncé est dans **[`docs/enonce.md`](docs/enonce.md)** (aussi visible dans
+JupyterLab : dossier `docs/`, clic droit sur `enonce.md` → *Open With* →
+*Markdown Preview*).
 
 | Adresse | Quoi |
 |---|---|

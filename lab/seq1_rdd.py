@@ -31,6 +31,17 @@ sc = spark.sparkContext
 #
 # ## 1.1 — Le RDD : une collection découpée en partitions
 #
+# Un **RDD** (*Resilient Distributed Dataset*) est la collection de base de
+# Spark. Pensez à un tableau JavaScript, avec trois différences :
+#
+# * **Distributed** : il n'est pas stocké d'un seul bloc. Il est découpé en
+#   **partitions**, et chaque partition peut être traitée par un cœur (ou une
+#   machine) différent.
+# * **Resilient** : si une partition est perdue (panne d'un executor), Spark
+#   sait la recalculer. Vous verrez comment en séquence 2.
+# * **Immuable** : on ne le modifie jamais. `filter` ou `map` ne changent pas
+#   le RDD d'origine, ils en créent un nouveau (section 1.5).
+#
 # `textFile` ne lit rien. Il décrit une collection distribuée de lignes.
 
 # %%
@@ -55,19 +66,66 @@ for l in premieres:
 # **Réponse Q1.1 :**
 #
 # **Réponse Q1.2 :**
+#
 
 # %% [markdown]
 # ## 1.2 — `filter` / `map` / `reduceByKey` : vos primitives, distribuées
+#
+# **Objectif :** compter les incidents critiques (niveau `ERROR`) par type
+# d'événement. Chaque ligne du fichier est un objet JSON, par exemple :
+#
+# ```json
+# {"ts":"…","cell_id":"CELL_0042","niveau":"ERROR","event":"BACKHAUL_LOSS", …}
+# ```
+#
+# La chaîne se lit en trois étapes. Chacune prend un RDD et en produit un
+# nouveau :
+#
+# | étape | RDD produit | contenu d'un élément |
+# |---|---|---|
+# | `filter` | `incidents` | une ligne brute (texte), uniquement les `ERROR` |
+# | `map` | `paires` | un couple `(event, 1)`, ex. `("BACKHAUL_LOSS", 1)` |
+# | `reduceByKey` | `comptes` | un couple `(event, total)`, ex. `("BACKHAUL_LOSS", n)` |
+#
+# **Pourquoi des couples `(clé, valeur)` ?** Spark ne sait pas ce que
+# représentent vos données. Tout ce qu'il comprend, c'est cette convention : le
+# 1er élément du couple est la **clé** qui sert à regrouper, le 2e est la
+# **valeur** à combiner. Le `1` signifie « j'ai vu cet événement une fois ».
+#
+# **Que fait `reduceByKey` ?** Il rassemble toutes les valeurs qui ont la même
+# clé, puis les réduit deux à deux avec la fonction que vous lui donnez :
+#
+# ```
+# ("BACKHAUL_LOSS", 1), ("AUTH_FAILURE", 1), ("BACKHAUL_LOSS", 1), ("BACKHAUL_LOSS", 1)
+#   BACKHAUL_LOSS : 1 + 1 = 2, puis 2 + 1 = 3   →  ("BACKHAUL_LOSS", 3)
+#   AUTH_FAILURE  : une seule valeur            →  ("AUTH_FAILURE", 1)
+# ```
+#
+# En JS, vous feriez un `.reduce()` qui remplit un objet `{event: total}` :
+# une seule boucle, sur un seul cœur, avec un accumulateur partagé.
+# `reduceByKey` fait la même chose, mais les lignes sont réparties sur
+# plusieurs partitions traitées en parallèle. Personne ne tient un
+# accumulateur global, donc Spark doit **réunir** les valeurs d'une même clé.
+# Ce qu'il en coûte est le sujet de la séquence 2.
 
 # %%
+# Étape 1 — garder uniquement les lignes d'erreur.
+# On teste le texte brut, sans parser le JSON : c'est bien plus rapide, et
+# la grande majorité des lignes (INFO, WARN) sont éliminées ici.
 # JS : lignes.filter(l => l.includes('"niveau":"ERROR"'))
 incidents = logs.filter(lambda l: '"niveau":"ERROR"' in l)
 
+# Étape 2 — transformer chaque ligne retenue en couple (clé, valeur).
+# On ne parse le JSON que pour les lignes qui ont passé le filtre.
+# Clé = type d'événement, valeur = 1 (une occurrence).
 # JS : .map(l => [JSON.parse(l).event, 1])
 paires = incidents.map(lambda l: (json.loads(l)["event"], 1))
 
+# Étape 3 — additionner les 1 de chaque clé.
+# La lambda reçoit deux valeurs de la MÊME clé (jamais la clé elle-même) et
+# renvoie leur combinaison. Spark l'applique jusqu'à ce qu'il ne reste
+# qu'une valeur par clé.
 # JS : pas d'équivalent direct — c'est ici que Spark cesse d'être du JS.
-# « Pour chaque clé, combine les valeurs deux à deux avec cette fonction. »
 comptes = paires.reduceByKey(lambda a, b: a + b)
 
 print("Aucun calcul n'a encore eu lieu. Rien n'est apparu dans la Spark UI.")
