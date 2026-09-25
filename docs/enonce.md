@@ -84,6 +84,8 @@ les fera relever.
 | 01:35 – 01:40 | Synthèse | — |
 
 Les sections marquées *Facultatif* ne sont à faire que si vous êtes en avance.
+La section 2.7, marquée *À lire après la séance*, se lit chez vous : sa
+question Q2.7 fait partie du livrable.
 
 ---
 

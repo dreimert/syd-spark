@@ -312,7 +312,11 @@ for p in (1, 8, 200):
 # **Réponse Q2.6 :**
 
 # %% [markdown]
-# ## 2.7 — Tolérance aux pannes : à quoi sert le lignage
+# ## 2.7 — *À lire après la séance* : tolérance aux pannes et lignage
+#
+# Cette section ne contient pas de code : lisez-la chez vous, après le TD.
+# Sa question Q2.7 fait partie du livrable. En séance, passez directement à la
+# cellule de fin de séquence.
 #
 # En mode `local[*]`, tout tourne dans un seul processus : on ne peut pas
 # « perdre une machine ». Voici ce qui se passe sur un vrai cluster.
@@ -371,9 +375,15 @@ for p in (1, 8, 200):
 #   uniquement sur le disque de M3), la recette ne peut pas être rejouée.
 # * Une tâche qui échoue trop souvent (4 fois par défaut) fait échouer le job.
 #
-# **Q2.7** Dans le scénario ci-dessus, pourquoi Spark n'a-t-il pas besoin de
-# recalculer les partitions du stage 1 produites par M1 et M2 ? Et que
-# se passerait-il si M3 tombait **pendant le stage 1**, avant tout shuffle ?
+# **Q2.7**
+#
+# 1. Cette fois, M3 tombe **pendant le stage 1**, alors qu'aucune tâche du
+#    stage 2 n'a commencé. Quelles tâches Spark doit-il relancer ? Y aura-t-il
+#    des *fetch failed* ?
+# 2. Imaginez que le `map` du stage 1 appelle `random.random()`, ou lise
+#    l'heure courante. Que donnerait le recalcul d'une partition perdue ?
+#    Pourquoi est-ce un problème pour le résultat final, et quel lien
+#    faites-vous avec l'immuabilité vue en séquence 1 ?
 
 # %% [markdown]
 # **Réponse Q2.7 :**
