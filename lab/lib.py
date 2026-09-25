@@ -82,6 +82,7 @@ def chrono(libelle):
     l'onglet Jobs de la Spark UI, au lieu d'un nom interne illisible."""
     from pyspark import SparkContext
     sc = SparkContext._active_spark_context
+    precedente = sc.getLocalProperty("spark.job.description") if sc else None
     if sc is not None:
         sc.setJobDescription(libelle)
     t0 = time.perf_counter()
@@ -89,7 +90,7 @@ def chrono(libelle):
         yield
     finally:
         if sc is not None:
-            sc.setJobDescription(None)
+            sc.setJobDescription(precedente)
     print(f"  [chrono] {libelle:<46s} {time.perf_counter() - t0:7.2f} s")
 
 
