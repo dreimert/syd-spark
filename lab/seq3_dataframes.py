@@ -116,6 +116,12 @@ print(f"  Parquet : {mo_parquet:8.1f} Mo   (facteur {mo_json / mo_parquet:.1f}×
 # crée en plus un sous-dossier par niveau (`niveau=ERROR/`, `niveau=INFO/`…) :
 # regardez dans `data/parquet/telemetrie/` avec l'explorateur de JupyterLab.
 #
+# **Attention, le mot *partition* prend ici un second sens.** Jusqu'ici, une
+# partition était un morceau de données **en cours de traitement**, confié à
+# une tâche. Le `partitionBy` d'une écriture range le fichier **sur disque**,
+# en sous-dossiers selon la valeur d'une colonne. Le `PartitionFilters` de la
+# section 3.4 parle de ces dossiers-là.
+#
 # **Q3.3** Donnez trois raisons à l'écart de taille. Pistes : ce qui se répète
 # à chaque ligne d'un fichier JSON ; ce qui se ressemble dans une colonne ;
 # comment un nombre est écrit en texte et en binaire.
