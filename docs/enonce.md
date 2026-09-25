@@ -46,7 +46,7 @@ Le vocabulaire dont vous aurez besoin pour lire la Spark UI :
 | **Executor** | Un processus qui fait le travail sur les données. Un cluster en compte des dizaines. |
 | **Partition** | Un morceau des données. C'est l'unité de parallélisme. |
 | **Tâche** (*task*) | Le traitement d'une partition par un executor, sur un cœur. |
-| **Stage** | Une suite de tâches qui s'enchaînent sans que les partitions aient besoin d'échanger des données. |
+| **Stage** | Un ensemble de tâches, une par partition, qui appliquent la même suite d'opérations sans que les partitions aient besoin d'échanger des données. Chaque échange de données entre partitions (*shuffle*) commence un nouveau stage. |
 | **Job** | Tout le travail déclenché par une demande de résultat (`count`, `collect`, `write`…). |
 
 Spark propose deux façons de programmer, que vous verrez dans cet ordre :

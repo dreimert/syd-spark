@@ -133,6 +133,19 @@ print(large.toDebugString().decode())
 # la moyenne. La seconde transporte des couples `(somme, compte)` qu'on peut
 # additionner au fur et à mesure.
 
+#
+# **Avant de comparer : mettre les enregistrements en cache.** Les quatre
+# versions de la suite (A1, A2, puis B1, B2) partent toutes des lignes
+# parsées. Sans précaution, chacune relirait le fichier et referait
+# `json.loads` sur les 5 millions de lignes : les chronos mesureraient surtout
+# le parsing, et les écarts qui nous intéressent seraient noyés.
+#
+# `persist` demande à Spark de **garder** les partitions de `recs` une fois
+# calculées : en mémoire, et sur disque si la mémoire manque (c'est le sens de
+# `MEMORY_AND_DISK`). Mais `persist` est paresseux, comme une transformation :
+# il ne calcule rien. C'est le `count()` qui remplit le cache. Après la
+# cellule, l'onglet *Storage* de la Spark UI montre le RDD mis en cache et la
+# place qu'il occupe.
 # %%
 from pyspark.storagelevel import StorageLevel
 
@@ -305,8 +318,12 @@ for p in (1, 8, 200):
 # Spark crée-t-il dans chaque cas, et que fait chacune ? Quel est le coût fixe
 # d'une tâche (planification, lancement, écriture d'un fichier de shuffle) ?
 #
-# 200 est la **valeur par défaut** de `spark.sql.shuffle.partitions` — celle
-# que vous subirez si vous n'y touchez pas.
+# Pourquoi tester 200 ? C'est la **valeur par défaut** de
+# `spark.sql.shuffle.partitions`, le nombre de partitions de sortie d'un
+# shuffle pour les **DataFrames** (séquences 3 et 4) : celle que vous subirez si
+# vous n'y touchez pas. Ce réglage ne concerne pas les RDD : sur un RDD,
+# `reduceByKey` sans `numPartitions` garde le nombre de partitions du RDD
+# parent (c'est le `(N)` que vous avez lu dans `toDebugString` en 2.2).
 
 # %% [markdown]
 # **Réponse Q2.6 :**
