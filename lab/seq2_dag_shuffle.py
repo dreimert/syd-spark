@@ -235,13 +235,14 @@ metriques_stages(spark, n=4)
 # haut A2. Retrouvez-les dans l'onglet *Stages* de la Spark UI.
 #
 # **Q2.3 — la plus importante du TD.**
-# Les deux durées sont voisines. Les **octets transférés** ne le sont pas :
-# relevez le *shuffle write* des deux versions et calculez le rapport.
+# Relevez les deux durées, puis le *shuffle write* des deux versions.
+# Calculez les deux rapports : lequel est le plus grand, et de combien ?
 #
 # Que transporte `groupByKey` ? Que transporte `reduceByKey` ?
-# Nommez le mécanisme responsable de l'écart.
+# Nommez le mécanisme responsable de l'écart d'octets.
 #
-# **Q2.4** Pourquoi l'écart de durée est-il, lui, si faible ?
+# **Q2.4** Pourquoi l'écart de durée est-il bien plus faible que l'écart
+# d'octets ?
 # Sur quel support transite le shuffle en mode `local[*]` ? Que deviendrait
 # cet écart sur 40 machines partageant un lien réseau de 10 Gb/s ?
 

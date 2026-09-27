@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Séquence 3 — DataFrames, Catalyst et format de stockage  (25 min)
+# # Séquence 3 — DataFrames, Catalyst et format de stockage  (20 min)
 #
 # Jusqu'ici Spark exécutait vos lambdas sans rien comprendre à ce qu'elles
 # faisaient. Avec les DataFrames, vous décrivez **l'intention**, et un
@@ -160,6 +160,12 @@ requete.explain()
 # a-t-il exécuté dans cet ordre ? Aurait-il pu en faire autant avec vos lambdas
 # Python de la séquence 1 ? **Pourquoi ?**
 
+# %% [markdown]
+# **Réponse Q3.5 :**
+
+# %% [markdown]
+# La cellule suivante exécute la même requête sur les deux sources.
+
 # %%
 with chrono("même requête, source Parquet"):
     n_parquet = requete.count()
@@ -170,7 +176,13 @@ with chrono("même requête, source JSON"):
 print("Mêmes résultats :", n_parquet == n_json, "-", f"{n_parquet:,}".replace(",", " "), "lignes")
 
 # %% [markdown]
-# **Réponse Q3.5 :**
+# **Q3.6** Relevez les deux durées et calculez le rapport. Pour chaque
+# source, qu'a-t-il fallu lire sur le disque et décoder pour répondre ?
+# Appuyez-vous sur les trois lignes du plan repérées plus haut. Pour le JSON,
+# vous pouvez vérifier en appelant `.explain()` sur la seconde requête.
+
+# %% [markdown]
+# **Réponse Q3.6 :**
 
 # %% [markdown]
 # ## 3.5 — À vous : votre première requête DataFrame
@@ -221,12 +233,17 @@ spark.sql("""
 """).show()
 
 # %% [markdown]
-# **Q3.6** RDD, DataFrame, SQL : lequel vous laisse le plus de liberté ?
+# ### *À lire après la séance* : trois API, un arbitrage
+#
+# Cette question se traite chez vous, après le TD ; elle fait partie du
+# livrable. En séance, passez directement à la cellule de fin de séquence.
+#
+# **Q3.7** RDD, DataFrame, SQL : lequel vous laisse le plus de liberté ?
 # Lequel en laisse le plus à l'optimiseur ? En quoi est-ce le même arbitrage
 # qu'entre une requête SQL et une boucle écrite à la main dans un programme ?
 
 # %% [markdown]
-# **Réponse Q3.6 :**
+# **Réponse Q3.7 :**
 
 # %% [markdown]
 # ## Fin de séquence

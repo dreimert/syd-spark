@@ -13,6 +13,23 @@ chronomètre**.
 | **Prérequis** | L'environnement installé et vérifié **avant** la séance : voir le [README](../README.md) |
 | **Livrable** | Les 4 fichiers `lab/seq*.py` complétés (6 TODO + réponses) et le relevé de mesures ci-dessous |
 
+## Objectifs
+
+À la fin du TD, vous saurez :
+
+1. prédire, à partir d'un code Spark, quand le calcul a lieu, et combien de
+   jobs, de stages et de tâches il produit ;
+2. repérer un shuffle dans un plan ou dans la Spark UI, et réduire son volume
+   en projetant et en agrégeant avant lui ;
+3. lire un plan Catalyst et expliquer ce que l'optimiseur peut faire avec un
+   DataFrame et ne peut pas faire avec une lambda ;
+4. justifier le choix d'un format de stockage (JSON ou Parquet) et d'un
+   schéma explicite ;
+5. choisir une stratégie de jointure, et diagnostiquer un déséquilibre de clés
+   à partir de la répartition des tâches ;
+6. mettre un résultat en cache à bon escient ;
+7. dire quand Spark n'est pas le bon outil.
+
 ---
 
 ## Apache Spark, en bref
@@ -79,13 +96,23 @@ les fera relever.
 | 00:00 – 00:10 | Mise en route | — |
 | 00:10 – 00:25 | 1. Du JavaScript fonctionnel au RDD | `lab/seq1_rdd.py` |
 | 00:25 – 00:50 | 2. Paresse, DAG et coût du shuffle | `lab/seq2_dag_shuffle.py` |
-| 00:50 – 01:15 | 3. DataFrames, Catalyst et format de stockage | `lab/seq3_dataframes.py` |
-| 01:15 – 01:35 | 4. Cas télécom : jointure, déséquilibre, cache | `lab/seq4_cas_telecom.py` |
+| 00:50 – 01:10 | 3. DataFrames, Catalyst et format de stockage | `lab/seq3_dataframes.py` |
+| 01:10 – 01:35 | 4. Cas télécom : jointure, déséquilibre, cache | `lab/seq4_cas_telecom.py` |
 | 01:35 – 01:40 | Synthèse | — |
 
 Les sections marquées *Facultatif* ne sont à faire que si vous êtes en avance.
-La section 2.7, marquée *À lire après la séance*, se lit chez vous : sa
-question Q2.7 fait partie du livrable.
+
+Les parties marquées *À lire après la séance* se font chez vous, et leurs
+questions font partie du livrable :
+
+| Partie | Questions | Ce qu'il faut faire |
+|---|---|---|
+| Section 2.7 : tolérance aux pannes | Q2.7 | lire, pas de code |
+| Fin de la séquence 3 : trois API, un arbitrage | Q3.7 | réfléchir, pas de code |
+| Section 4.3, partie AQE | Q4.6, Q4.7 | relancer deux cellules (le notebook explique lesquelles) |
+
+L'environnement étant installé sur votre portable, vous pouvez relancer ces
+cellules chez vous.
 
 ---
 
@@ -183,7 +210,9 @@ trafic. On livre le résultat à un tableau de bord Node.js.
 
 À compléter au fil de la séance. Vos valeurs dépendent de votre portable : ce
 qui compte, ce sont les **rapports** entre les deux colonnes, et votre
-explication.
+explication. Les colonnes suivent l'intitulé de chaque ligne (*Avant* → *Après*),
+pas l'ordre du notebook : pour la jointure de la séquence 4, *Avant* est le
+sort-merge, que le notebook exécute en second.
 
 | Mesure | Avant | Après | Rapport |
 |---|---|---|---|
@@ -195,8 +224,8 @@ explication.
 | Séq. 3 — Taille sur disque : NDJSON → Parquet | | | |
 | Séq. 3 — Requête filtrée : JSON → Parquet | | | |
 | Séq. 4 — Jointure : sort-merge → broadcast | | | |
-| Séq. 4 — Jointure déséquilibrée : tâche médiane → tâche max | | | |
-| Séq. 4 — Nombre de tâches : sans AQE → avec AQE | | | |
+| Séq. 4 — Jointure déséquilibrée : tâche médiane → tâche max (tâches non vides) | | | |
+| Séq. 4 — Nombre de tâches : sans AQE → avec AQE (après la séance) | | | |
 | Séq. 4 — 3 requêtes : sans cache → avec cache | | | |
 
 > Une réponse qui cite un chiffre sans l'expliquer ne vaut rien ; une

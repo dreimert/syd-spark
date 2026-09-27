@@ -182,7 +182,12 @@ def metriques_stages(spark, n=6):
 def profil_taches(spark, stage_id=None, recents=6):
     """Distribution des durées de tâches d'un stage : c'est là que se voit le
     déséquilibre (data skew). Un stage se termine quand sa tâche la plus lente
-    se termine — la médiane ne dit rien du temps réellement subi."""
+    se termine — la médiane ne dit rien du temps réellement subi.
+
+    Les tâches qui n'ont lu aucun enregistrement de shuffle sont écartées :
+    avec 87 clés et 200 partitions, plus de la moitié des partitions sont
+    vides, et une médiane calculée sur elles ne mesurerait que le coût fixe
+    d'une tâche."""
     try:
         stages = [s for s in _api(spark, "stages") if s.get("status") == "COMPLETE"]
         if not stages:
@@ -199,13 +204,30 @@ def profil_taches(spark, stage_id=None, recents=6):
         print(f"  (métriques indisponibles : {e})")
         return
 
-    durees = sorted(t.get("duration", 0) or 0 for t in taches)
-    if not durees:
+    def lus(t):
+        m = (t.get("taskMetrics") or {}).get("shuffleReadMetrics") or {}
+        return m.get("recordsRead", 0) or 0
+
+    if not taches:
         return
+    non_vides = [t for t in taches if lus(t) > 0]
+    retenues = non_vides or taches          # stage sans shuffle lu : toutes
+    durees = sorted(t.get("duration", 0) or 0 for t in retenues)
+    enregs = sorted(lus(t) for t in retenues)
     med = durees[len(durees) // 2]
-    print(f"\n  Stage {cible['stageId']} — {len(durees)} tâches")
-    print(f"    médiane {med:>7} ms | p90 {durees[int(.9 * len(durees)) - 1]:>7} ms "
-          f"| MAX {durees[-1]:>7} ms")
+    med_e = enregs[len(enregs) // 2]
+    total_e = sum(enregs)
+
+    print(f"\n  Stage {cible['stageId']} — {len(taches)} tâches", end="")
+    if non_vides and len(non_vides) < len(taches):
+        print(f", dont {len(taches) - len(non_vides)} vides (aucun enregistrement lu)"
+              f" : écartées ci-dessous", end="")
+    print()
+    print(f"    durée          : médiane {med:>9} ms | p90 {durees[int(.9 * len(durees)) - 1]:>9} ms "
+          f"| MAX {durees[-1]:>9} ms")
+    if total_e:
+        print(f"    enreg. lus     : médiane {med_e:>9,} | MAX {enregs[-1]:>9,}".replace(",", " ")
+              + f"   (la tâche MAX lit {100 * enregs[-1] / total_e:.1f} % du total)")
     if med:
-        print(f"    rapport max/médiane : {durees[-1] / med:.1f}×")
+        print(f"    rapport max/médiane (durée) : {durees[-1] / med:.1f}×")
     print("    Le stage n'est terminé qu'au retour de la tâche la plus lente.")

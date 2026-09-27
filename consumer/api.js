@@ -73,7 +73,7 @@ const serveur = http.createServer((req, res) => {
     return json(res, 503, {
       erreur: 'Aucun résultat Spark disponible.',
       attendu: SORTIE,
-      indice: 'Exécutez la séquence 4 (TODO 3) pour produire les données.',
+      indice: 'Exécutez la séquence 4 (TODO 6) pour produire les données.',
     });
   }
 

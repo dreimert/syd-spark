@@ -188,17 +188,29 @@ par_cellule = None   # <-- remplacez
 # %% [markdown]
 # ## 1.5 — Immuabilité
 #
-# Le réflexe JavaScript `array.push()` n'existe pas ici.
+# Le réflexe JavaScript `array.push()` n'existe pas ici. Pour le voir sans
+# relire les 5 millions de lignes, on prend un petit RDD construit à partir
+# d'une liste Python (`parallelize`), et on lui applique trois transformations.
 
 # %%
-try:
-    logs.append("nouvelle ligne")           # noqa
-except AttributeError as e:
-    print("Erreur attendue :", e)
+nombres = sc.parallelize([1, 2, 3, 4, 5, 6])
 
+pairs   = nombres.filter(lambda x: x % 2 == 0)
+doubles = nombres.map(lambda x: 2 * x)
+plus    = nombres.union(sc.parallelize([7]))   # « ajouter » une ligne
+
+print("nombres :", nombres.collect())
+print("pairs   :", pairs.collect())
+print("doubles :", doubles.collect())
+print("plus    :", plus.collect())
 print()
-print("Un RDD ne se modifie pas : chaque transformation en produit un NOUVEAU.")
+print("nombres n'a pas changé : chaque transformation a produit un NOUVEAU RDD.")
 print("C'est ce qui rend le recalcul après panne possible (séquence 2).")
+
+# %% [markdown]
+# `filter`, `map` et même l'ajout d'une ligne (`union`) laissent `nombres`
+# intact. C'est aussi ce qui s'est passé plus haut : `incidents` et `paires`
+# sont de nouveaux RDD, et `logs` décrit toujours tout le fichier.
 
 # %% [markdown]
 # ## Fin de séquence

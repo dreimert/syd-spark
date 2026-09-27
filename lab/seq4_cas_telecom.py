@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Séquence 4 — Cas télécom : jointure, déséquilibre et cache  (20 min)
+# # Séquence 4 — Cas télécom : jointure, déséquilibre et cache  (25 min)
 #
 # **Mission.** La supervision réseau de la Métropole de Lyon veut, pour chaque
 # heure de la journée, la liste des cellules dont le taux de charge dépasse
@@ -168,11 +168,22 @@ print(f"\nCellule la plus chargée : {tete['cell_id']} = "
 # l'on expédie les lignes brutes, la tâche chargée de la cellule de la gare
 # reçoit à elle seule la part de trafic affichée ci-dessus.
 #
+# **Des partitions vides.** 87 clés dans 200 partitions : au plus 87
+# partitions reçoivent des données, les autres restent vides. Leurs tâches ne
+# font rien et se terminent en quelques millisecondes. Les compter fausserait
+# toute statistique sur les tâches : `profil_taches` les écarte.
+#
 # **Lire `profil_taches`.** La fonction affiche, pour le stage qui a lu le
-# shuffle, la durée **médiane** des tâches (la moitié ont été plus rapides),
-# le **p90** (90 % ont été plus rapides) et le **MAX**. Si les données sont
-# bien réparties, les trois sont proches. Un MAX très supérieur à la médiane
-# signale une tâche surchargée : c'est elle qui fixe la durée du stage.
+# shuffle et pour ses seules tâches non vides :
+#
+# * la durée **médiane** des tâches (la moitié ont été plus rapides), le
+#   **p90** (90 % ont été plus rapides) et le **MAX** ;
+# * le nombre d'**enregistrements lus** par la tâche médiane et par la plus
+#   chargée, et la part du total lue par cette dernière.
+#
+# Si les données sont bien réparties, médiane et MAX sont proches. Un MAX très
+# supérieur à la médiane signale une tâche surchargée : c'est elle qui fixe la
+# durée du stage.
 #
 # Commençons par une simple agrégation par cellule.
 
@@ -185,8 +196,8 @@ profil_taches(spark)
 
 # %% [markdown]
 # **Q4.3** Cette agrégation souffre-t-elle du déséquilibre ? Pourquoi ?
-# *(Indice : que fait chaque tâche **avant** d'expédier ses données ? C'est le
-# mécanisme de la question Q2.3.)*
+# *(Indice : comparez le nombre d'enregistrements lus par la tâche la plus
+# chargée au nombre de lignes de la cellule de la gare, affiché plus haut.)*
 #
 # Le déséquilibre fait mal là où l'on ne peut pas pré-agréger : **les
 # jointures**. Forçons une jointure par shuffle (diffusion interdite, comme en
@@ -201,9 +212,15 @@ with chrono("jointure sur clé déséquilibrée — SANS AQE"):
                .groupBy("secteur").agg(F.avg("latence_ms")).count())
 profil_taches(spark)
 
+# On remet les réglages du TD pour la suite de la séquence.
+spark.conf.set("spark.sql.shuffle.partitions", 8)
+spark.conf.set("spark.sql.autoBroadcastJoinThreshold", 10 * 1024 * 1024)
+
 # %% [markdown]
-# **Q4.4** Relevez le rapport entre la tâche la plus longue et la tâche
-# médiane. Reliez-le au pourcentage de trafic de la cellule la plus chargée.
+# **Q4.4** Relevez le rapport entre la durée de la tâche la plus longue et
+# celle de la tâche médiane. Relevez aussi la part des enregistrements lue par
+# la tâche la plus chargée, et comparez-la au pourcentage de trafic de la
+# cellule de la gare. Pourquoi la tâche médiane lit-elle si peu ?
 #
 # **Q4.5** Vous ajoutez 20 machines au cluster. La tâche la plus lente
 # va-t-elle plus vite ? Le stage se terminera-t-il plus tôt ? Quelle loi
@@ -217,7 +234,15 @@ profil_taches(spark)
 # **Réponse Q4.5 :**
 
 # %% [markdown]
-# ### Adaptive Query Execution (AQE)
+# ### *À lire après la séance* : Adaptive Query Execution (AQE)
+#
+# Cette partie se fait chez vous, après le TD. Ses questions Q4.6 et Q4.7
+# font partie du livrable. En séance, passez directement à la section 4.4.
+#
+# **Chez vous.** L'environnement est installé sur votre portable : lancez
+# `docker compose up`, ouvrez ce notebook, exécutez la première cellule, puis
+# la cellule « SANS AQE » de la section 4.3 et enfin la cellule ci-dessous.
+# Vous aurez ainsi les deux exécutions à comparer dans la même Spark UI.
 #
 # Depuis Spark 3, le moteur peut observer les statistiques **réelles** du
 # shuffle une fois écrit, et réécrire la suite du plan pendant l'exécution.
@@ -239,6 +264,10 @@ profil_taches(spark)
 # réglages.
 
 # %%
+# Mêmes conditions que la cellule « SANS AQE » : 200 partitions, diffusion
+# interdite. Seule différence : AQE est activé.
+spark.conf.set("spark.sql.shuffle.partitions", 200)
+spark.conf.set("spark.sql.autoBroadcastJoinThreshold", -1)
 spark.conf.set("spark.sql.adaptive.enabled", True)
 
 with chrono("même jointure — AVEC AQE"):
@@ -260,8 +289,8 @@ spark.conf.set("spark.sql.adaptive.enabled", False)
 
 # %% [markdown]
 # **Q4.6** Combien de tâches reste-t-il ? Que sont devenues les 200 ? (Onglet
-# *SQL / DataFrame*, dernière requête : cherchez `AQEShuffleRead`.) La durée
-# a baissé : est-ce parce que le déséquilibre a été corrigé ? Avec si peu de
+# *SQL / DataFrame*, dernière requête : cherchez `AQEShuffleRead`.) Si la durée
+# a baissé, est-ce parce que le déséquilibre a été corrigé ? Avec si peu de
 # tâches, le rapport max/médiane a-t-il encore un sens ?
 #
 # **Q4.7** AQE sait aussi **découper** une partition trop lourde
