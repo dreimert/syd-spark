@@ -246,5 +246,13 @@ sort-merge, que le notebook exécute en second.
 
 ---
 
+## Préparer l'évaluation
+
+L'évaluation de la prochaine séance porte sur ces notions. Des exemples de
+questions sont dans
+[`evaluation-exemples.md`](evaluation-exemples.md).
+
+---
+
 *Environnement : PySpark 3.5 / Java 17 / Node.js 18 (scripts compatibles jusqu'à Node.js 26) sous Docker. Jeu de
 données synthétique déterministe, 5 000 000 d'événements, 87 cellules.*
