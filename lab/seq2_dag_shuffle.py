@@ -42,6 +42,10 @@ print("Enregistrements retenus :", f"{n:,}".replace(",", " "))
 # **Q2.1** Combien de jobs voyez-vous maintenant dans l'onglet *Jobs* ?
 # Combien de stages pour ce job ? Pourquoi ce nombre-là ? Proposez une
 # explication : la section 2.2 vous permettra de la vérifier.
+#
+# *Où regarder :* Spark UI › *Jobs*, colonne *Stages: Succeeded/Total*.
+# Cliquez sur la description du job pour voir son graphe (*DAG
+# Visualization*).
 
 # %% [markdown]
 # **Réponse Q2.1 :**
@@ -79,6 +83,15 @@ print("Enregistrements retenus :", f"{n:,}".replace(",", " "))
 # Un **stage** est une suite d'opérations étroites qui s'enchaînent sans
 # échange. Chaque dépendance large coupe le plan : le stage suivant ne peut pas
 # commencer tant que le précédent n'a pas fini de produire ses données.
+#
+# **Ce qui se passe physiquement au shuffle.** Chaque tâche du premier stage
+# range ses couples selon leur partition de destination, choisie d'après la
+# clé, et les écrit dans des fichiers sur le **disque local** de sa machine :
+# c'est le *shuffle write*. Chaque tâche du stage suivant va ensuite chercher
+# sa part dans les fichiers de **toutes** les tâches du premier stage, à
+# travers le réseau quand elles ont tourné sur une autre machine : c'est le
+# *shuffle read*. Les colonnes *Shuffle Write* et *Shuffle Read* de l'onglet
+# *Stages* comptent ces octets.
 #
 # Les deux RDD ci-dessous illustrent chaque cas :
 #
@@ -118,8 +131,13 @@ print(large.toDebugString().decode())
 #   aucun dans le premier graphe, un seul dans le second.
 
 # %% [markdown]
-# **Q2.2** Dans le second graphe, repérez `ShuffledRDD`. Que se passe-t-il
-# physiquement à cet endroit précis ? Où vont les octets ?
+# **Q2.2** Dans le second graphe, repérez `ShuffledRDD` et la ligne `+-`
+# juste en dessous. Quels RDD appartiennent au stage qui **écrit** le shuffle,
+# lesquels au stage qui le **lit** ? Combien de tâches compte chacun des deux
+# stages ?
+#
+# *Où regarder :* la sortie de la cellule ci-dessus (second graphe), et le
+# `(N)` en tête de chaque bloc.
 
 # %% [markdown]
 # **Réponse Q2.2 :**
@@ -175,24 +193,35 @@ print("combine est correcte")
 # %% [markdown]
 # **Les deux versions, pas à pas.** Prenons une cellule `CELL_0001` qui aurait
 # seulement quatre mesures de latence : 40, 80, 30 et 50 ms (moyenne : 50).
+# Les deux premières sont dans la partition P0, les deux autres dans P1.
+# Dans les schémas, la clé `CELL_0001` est omise : c'est la même partout.
 #
 # **A1 — `groupByKey` puis moyenne**
 #
 # ```
-# map          ("CELL_0001", 40)  ("CELL_0001", 80)  ("CELL_0001", 30)  ("CELL_0001", 50)
-# groupByKey   ("CELL_0001", [40, 80, 30, 50])       une clé -> la liste de TOUTES ses valeurs
-# mapValues    ("CELL_0001", 200 / 4 = 50.0)
+#         stage 1 : une tâche par partition           │ shuffle │  stage 2
+#
+#   P0   map  40  80 ─────────────────────────────────┼─────────┼─┐
+#                                                     │         │ ├─► groupByKey   [40, 80, 30, 50]
+#   P1   map  30  50 ─────────────────────────────────┼─────────┼─┘   mapValues    200 / 4 = 50.0
+#
+#   4 valeurs traversent le shuffle.
 # ```
 #
 # **A2 — `reduceByKey` sur des couples `(somme, compte)`**
 #
 # ```
-# map          ("CELL_0001", (40, 1))  ("CELL_0001", (80, 1))  ("CELL_0001", (30, 1))  ("CELL_0001", (50, 1))
-# reduceByKey  combine((40, 1), (80, 1))   = (120, 2)
-#              combine((30, 1), (50, 1))   = (80, 2)
-#              combine((120, 2), (80, 2))  = (200, 4)
-# mapValues    ("CELL_0001", 200 / 4 = 50.0)
+#         stage 1 : une tâche par partition           │ shuffle │  stage 2
+#
+#   P0   map  (40, 1) (80, 1)  combine ─► (120, 2) ───┼─────────┼─┐
+#                                                     │         │ ├─► combine((120, 2), (80, 2)) = (200, 4)
+#   P1   map  (30, 1) (50, 1)  combine ─► (80, 2) ────┼─────────┼─┘   mapValues    200 / 4 = 50.0
+#
+#   2 couples traversent le shuffle.
 # ```
+#
+# Avec quatre mesures, l'écart est minime. Dans le vrai fichier, chaque
+# partition contient des milliers de mesures de chaque cellule.
 #
 # **Pourquoi ne pas réduire directement les moyennes ?** Parce que la moyenne
 # de deux moyennes est fausse dès que les groupes n'ont pas la même taille.
@@ -235,16 +264,31 @@ metriques_stages(spark, n=4)
 # haut A2. Retrouvez-les dans l'onglet *Stages* de la Spark UI.
 #
 # **Q2.3 — la plus importante du TD.**
-# Relevez les deux durées, puis le *shuffle write* des deux versions.
-# Calculez les deux rapports : lequel est le plus grand, et de combien ?
 #
-# Que transporte `groupByKey` ? Que transporte `reduceByKey` ?
-# Nommez le mécanisme responsable de l'écart d'octets.
+# 1. *Relevez*, pour A1 puis pour A2, la durée et le *shuffle write*.
+# 2. *Calculez* deux rapports : durée A1 / durée A2, puis shuffle write A1 /
+#    shuffle write A2. Lequel des deux rapports est le plus grand ?
+# 3. *Expliquez* l'écart d'octets. D'après les schémas pas à pas : qu'est-ce
+#    que chaque version envoie dans le shuffle ? Dans quel stage
+#    `reduceByKey` appelle-t-il `combine` pour la première fois ?
 #
-# **Q2.4** Pourquoi l'écart de durée est-il bien plus faible que l'écart
-# d'octets ?
-# Sur quel support transite le shuffle en mode `local[*]` ? Que deviendrait
-# cet écart sur 40 machines partageant un lien réseau de 10 Gb/s ?
+# *Où regarder :* les lignes `[chrono] A1 …` et `[chrono] A2 …` pour les
+# durées ; le tableau ci-dessus pour les octets. Pour chaque version, une
+# seule des deux lignes a un *shuffle write* non nul : c'est celle-là.
+#
+# **Q2.4**
+#
+# 1. L'écart de durée est bien plus faible que l'écart d'octets. Pourquoi ?
+#    Relisez en 2.2 où sont écrits les fichiers de shuffle : en mode
+#    `local[*]`, par quel support passent-ils ? Passent-ils par le réseau ?
+# 2. Changeons d'échelle : un opérateur national a 1 000 fois plus
+#    d'événements. Multipliez vos deux *shuffle write* par 1 000 (admettez que
+#    les deux volumes croissent comme le nombre de lignes). Le shuffle traverse
+#    maintenant un réseau à 10 Gb/s, soit environ 1,25 Go/s. Combien de
+#    secondes faut-il, au minimum, pour transférer chacun des deux volumes ?
+#
+# *Où regarder :* vos relevés de Q2.3 ; le paragraphe « Ce qui se passe
+# physiquement au shuffle » en 2.2.
 
 # %% [markdown]
 # **Réponse Q2.3 :**
@@ -253,6 +297,11 @@ metriques_stages(spark, n=4)
 
 # %% [markdown]
 # ## 2.5 — Projeter avant de mélanger
+#
+# Ce qu'A2 fait dans chaque partition **avant** d'expédier ses données porte
+# un nom : la **combinaison côté map** (*map-side combine*). `reduceByKey` la
+# fait toujours ; `groupByKey` ne peut pas la faire, puisqu'il doit livrer
+# toutes les valeurs.
 #
 # Ici, la durée parle aussi. On compte les événements par cellule, de deux
 # façons. Seul le contenu de la **valeur** change dans le `map` :
@@ -294,10 +343,14 @@ print("Résultats identiques :", sorted(b1) == sorted(b2))
 metriques_stages(spark, n=4)
 
 # %% [markdown]
-# **Q2.5** Relevez volumes et durées. En B1, on a transporté sept champs par
+# **Q2.5** Relevez, pour B1 et B2, la durée et le *shuffle write*, et
+# calculez les deux rapports B1 / B2. En B1, on a transporté sept champs par
 # enregistrement pour n'en compter aucun. Formulez la règle en une phrase —
 # c'est celle que l'optimiseur appliquera tout seul en séquence 3, et que vous
 # devez appliquer à la main sur les RDD.
+#
+# *Où regarder :* les lignes `[chrono] B1 …` et `[chrono] B2 …`, et le tableau
+# ci-dessus, lu comme en Q2.3.
 
 # %% [markdown]
 # **Réponse Q2.5 :**
@@ -317,6 +370,10 @@ for p in (1, 8, 200):
 # Pistes : combien de clés distinctes y a-t-il en sortie ? Combien de tâches
 # Spark crée-t-il dans chaque cas, et que fait chacune ? Quel est le coût fixe
 # d'une tâche (planification, lancement, écriture d'un fichier de shuffle) ?
+#
+# *Où regarder :* les trois lignes `[chrono]` ; Spark UI › *Stages*, colonne
+# *Tasks: Succeeded/Total* des stages qui lisent le shuffle (*Shuffle Read*
+# non vide).
 #
 # Pourquoi tester 200 ? C'est la **valeur par défaut** de
 # `spark.sql.shuffle.partitions`, le nombre de partitions de sortie d'un

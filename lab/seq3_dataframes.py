@@ -63,6 +63,9 @@ df.show(3)
 # **Q3.1** D'où vient l'écart de durée entre les deux lectures ? Combien de
 # fois Spark lit-il le fichier dans chaque cas, en comptant le calcul que vous
 # lancerez ensuite sur `df` ? Que se passerait-il sur 2 To de logs ?
+#
+# *Où regarder :* les deux lignes `[chrono]` de la cellule précédente ; Spark
+# UI › *Jobs*, lu comme expliqué ci-dessus.
 
 # %% [markdown]
 # **Réponse Q3.1 :**
@@ -88,8 +91,10 @@ with chrono("latence moyenne par cellule — API DataFrame"):
 
 # %% [markdown]
 # **Q3.2** Le code DataFrame est plus court. Est-il plus rapide ? De combien ?
-# Où s'exécute `json.loads` dans le premier cas ? Où se fait le parsing dans le
-# second ?
+# Dans quel processus s'exécute `json.loads` dans le premier cas : la JVM de
+# Spark ou un processus Python ? Et le parsing dans le second ?
+#
+# *Où regarder :* les deux lignes `[chrono]` de la cellule précédente.
 
 # %% [markdown]
 # **Réponse Q3.2 :**
@@ -126,9 +131,22 @@ print(f"  Parquet : {mo_parquet:8.1f} Mo   (facteur {mo_json / mo_parquet:.1f}×
 # à chaque ligne d'un fichier JSON ; ce qui se ressemble dans une colonne ;
 # comment un nombre est écrit en texte et en binaire.
 #
+# *Où regarder :* les deux tailles affichées par la cellule précédente, et
+# le dossier `data/parquet/telemetrie/`.
+#
 # **Q3.4** Ce facteur s'applique à tout ce qui traverse un disque ou un
-# réseau. Qu'est-ce que cela change pour une antenne qui remonte sa télémétrie
-# par un lien de collecte (backhaul) ?
+# réseau. Les antennes remontent leur télémétrie par un lien de collecte
+# (*backhaul*) de débit fixe.
+#
+# 1. Si les données voyageaient en Parquet plutôt qu'en JSON, combien de fois
+#    plus de télémétrie ce lien pourrait-il transporter ?
+# 2. Parquet range les valeurs **par colonne** : pour écrire la colonne
+#    `latence_ms`, il faut avoir sous la main un lot de lignes. Pourquoi une
+#    antenne qui envoie chaque événement dès qu'il se produit ne peut-elle pas
+#    simplement écrire du Parquet ?
+#
+# *Où regarder :* le facteur affiché par la cellule de conversion, et le
+# paragraphe sur Parquet ci-dessus.
 
 # %% [markdown]
 # **Réponse Q3.3 :**
@@ -152,13 +170,19 @@ requete.explain()
 #
 # * `PartitionFilters: [..., (niveau = ERROR)]` — des dossiers entiers jamais ouverts
 # * `PushedFilters: [..., GreaterThan(latence_ms,100)]` — le filtre descendu
-#   dans le lecteur Parquet, pas appliqué après coup par Spark
+#   dans le lecteur Parquet, qui saute sans les décoder les blocs ne pouvant
+#   contenir aucune ligne valable (le `Filter` au-dessus achève le tri, ligne
+#   par ligne, dans ce qui reste)
 # * `ReadSchema: struct<cell_id:string,latence_ms:bigint>` — deux colonnes
 #   lues sur sept
 #
 # **Q3.5** Vous avez écrit `filter` puis `filter` puis `select`. Catalyst
 # a-t-il exécuté dans cet ordre ? Aurait-il pu en faire autant avec vos lambdas
 # Python de la séquence 1 ? **Pourquoi ?**
+#
+# *Où regarder :* le plan affiché ci-dessus, qui se lit de bas en haut.
+# L'opérateur `FileScan`, tout en bas, est la lecture du fichier : vos deux
+# filtres et votre `select` y apparaissent-ils déjà ?
 
 # %% [markdown]
 # **Réponse Q3.5 :**
@@ -180,6 +204,9 @@ print("Mêmes résultats :", n_parquet == n_json, "-", f"{n_parquet:,}".replace(
 # source, qu'a-t-il fallu lire sur le disque et décoder pour répondre ?
 # Appuyez-vous sur les trois lignes du plan repérées plus haut. Pour le JSON,
 # vous pouvez vérifier en appelant `.explain()` sur la seconde requête.
+#
+# *Où regarder :* les deux lignes `[chrono]` de la cellule précédente ; les
+# lignes `PartitionFilters`, `PushedFilters` et `ReadSchema` des deux plans.
 
 # %% [markdown]
 # **Réponse Q3.6 :**

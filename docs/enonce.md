@@ -167,8 +167,9 @@ UI**, puis on passe à la suivante.
 
 * **Les questions** (Q1.1, Q1.2…) sont dans les notebooks. Répondez dans les
   cellules *Réponse* prévues juste en dessous : double-cliquez dessus pour les
-  modifier. Les questions marquées ⚑ dans le tableau ci-dessous portent
-  l'essentiel du raisonnement.
+  modifier. Sous chaque question, une ligne *Où regarder* indique la sortie
+  de cellule ou l'onglet de la Spark UI qui contient la réponse. Les questions
+  marquées ⚑ dans le tableau ci-dessous portent l'essentiel du raisonnement.
 * **Les TODO** sont les endroits où vous écrivez du code. Ils sont courts et
   progressifs : chacun prépare le suivant.
 

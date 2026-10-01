@@ -19,7 +19,7 @@
 # **Réponse** prévues à cet effet : ce fichier fait partie du livrable.
 
 # %%
-from lib import session, chrono, pause, NDJSON
+from lib import session, chrono, pause, taille_disque, NDJSON
 import json
 
 with chrono("démarrage de la session Spark"):
@@ -47,7 +47,9 @@ sc = spark.sparkContext
 # %%
 logs = sc.textFile(NDJSON)
 
+print(f"Taille du fichier    : {taille_disque(NDJSON):.0f} Mo")
 print("Nombre de partitions :", logs.getNumPartitions())
+print("Cœurs utilisés       :", sc.defaultParallelism)
 print("Une partition = une unité de travail = une tâche exécutée sur un cœur.")
 print()
 with chrono("take(3)"):
@@ -56,11 +58,19 @@ for l in premieres:
     print("  ", l)
 
 # %% [markdown]
-# **Q1.1** Combien de partitions ? Comparez à votre nombre de cœurs.
-# D'où vient ce découpage — de vous, du fichier, ou de Spark ?
+# **Q1.1** Relevez le nombre de partitions et le nombre de cœurs. Divisez
+# la taille du fichier par le nombre de partitions : combien pèse une
+# partition ? Ce découpage vient-il de vous, de votre nombre de cœurs, ou du
+# fichier ?
 #
-# **Q1.2** `take(3)` a-t-il lu tout le fichier ? Regardez sa durée, et le
-# nombre de tâches du job correspondant dans l'onglet *Jobs* de la Spark UI.
+# *Où regarder :* les trois premières lignes affichées par la cellule
+# ci-dessus.
+#
+# **Q1.2** `take(3)` a-t-il lu tout le fichier ? Relevez sa durée et le
+# nombre de tâches de son job, et comparez ce nombre à celui des partitions.
+#
+# *Où regarder :* la ligne `[chrono] take(3)` ; puis Spark UI › *Jobs*, ligne
+# dont la *Description* est `take(3)`, colonne *Tasks (for all stages)*.
 
 # %% [markdown]
 # **Réponse Q1.1 :**
@@ -169,16 +179,23 @@ par_cellule = None   # <-- remplacez
 # node producer/bench-node.js
 # ```
 #
-# **Q1.3** Notez les deux durées (Node sur 1 thread, Spark sur tous vos
-# cœurs). Le rapport est-il égal à votre nombre de cœurs ? Proposez au moins
-# trois explications. Pistes : ce que chaque ligne doit traverser avant
+# **Q1.3** Relevez les deux durées (Node sur 1 thread, Spark sur tous vos
+# cœurs) et calculez le rapport Node / Spark. Est-il égal à votre nombre de
+# cœurs ? Proposez au moins trois explications. Pistes : ce que chaque ligne doit traverser avant
 # d'arriver dans votre lambda Python ; ce que les cœurs se partagent ; ce que
 # Spark doit organiser avant de lancer la moindre tâche. Et n'oubliez pas la
 # durée de démarrage de la session, mesurée plus haut : Node ne la paie pas.
 #
+# *Où regarder :* la ligne `DURÉE NODE.JS (1 thread)` dans le terminal ; les
+# lignes `[chrono] comptage des incidents par type` et `[chrono] démarrage de
+# la session Spark` dans ce notebook.
+#
 # **Q1.4** Sur ce volume, sur votre portable, Spark est-il le bon outil ?
 # À partir de quand le deviendrait-il ? La question n'est pas rhétorique :
 # savoir *ne pas* sortir Spark fait partie du métier.
+#
+# *Où regarder :* rien de nouveau à relever ; raisonnez à partir de vos
+# mesures de Q1.3.
 
 # %% [markdown]
 # **Réponse Q1.3 :**

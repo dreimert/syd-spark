@@ -86,9 +86,21 @@ spark.conf.set("spark.sql.autoBroadcastJoinThreshold", 10 * 1024 * 1024)
 # (`...Join`). Comparez les durées et les volumes de shuffle des deux
 # exécutions. Qu'a-t-on évité de déplacer en diffusant 87 lignes ?
 #
-# **Q4.2** À partir de quelle taille de référentiel la diffusion
-# devient-elle une mauvaise idée ? Où la table diffusée est-elle stockée, et en
-# combien d'exemplaires ?
+# *Où regarder :* dans chaque plan, l'opérateur dont le nom finit par `Join`,
+# et les `Exchange` ; les lignes `[chrono]` ; dans chaque tableau de
+# métriques, la colonne *shuffle write*.
+#
+# **Q4.2** Où la table diffusée est-elle stockée, et en combien
+# d'exemplaires ? Prenons un cluster de 50 executors et une télémétrie de
+# 50 Go. Le sort-merge déplace au plus une fois chaque ligne des deux tables,
+# soit environ 50 Go.
+#
+# 1. Combien d'octets la diffusion envoie-t-elle pour un référentiel de 1 Mo ?
+#    De 2 Go ? Quelle stratégie choisir dans chaque cas ?
+# 2. Quel autre risque court-on en diffusant une table de 2 Go ?
+#
+# *Où regarder :* le schéma *broadcast* au début de la section 4.1 ; rien à
+# mesurer.
 
 # %% [markdown]
 # **Réponse Q4.1 :**
@@ -199,6 +211,9 @@ profil_taches(spark)
 # *(Indice : comparez le nombre d'enregistrements lus par la tâche la plus
 # chargée au nombre de lignes de la cellule de la gare, affiché plus haut.)*
 #
+# *Où regarder :* la ligne `enreg. lus` affichée par `profil_taches`, et la
+# colonne `count` du tableau `volumetrie` (première ligne).
+#
 # Le déséquilibre fait mal là où l'on ne peut pas pré-agréger : **les
 # jointures**. Forçons une jointure par shuffle (diffusion interdite, comme en
 # 4.1). La requête calcule la latence moyenne **par secteur** : elle joint
@@ -222,9 +237,15 @@ spark.conf.set("spark.sql.autoBroadcastJoinThreshold", 10 * 1024 * 1024)
 # la tâche la plus chargée, et comparez-la au pourcentage de trafic de la
 # cellule de la gare. Pourquoi la tâche médiane lit-elle si peu ?
 #
+# *Où regarder :* les lignes `rapport max/médiane` et `enreg. lus` (« la
+# tâche MAX lit … % du total ») de `profil_taches` ; le pourcentage affiché
+# sous le tableau `volumetrie`.
+#
 # **Q4.5** Vous ajoutez 20 machines au cluster. La tâche la plus lente
 # va-t-elle plus vite ? Le stage se terminera-t-il plus tôt ? Quelle loi
 # reconnaissez-vous ?
+#
+# *Où regarder :* rien de nouveau à relever ; raisonnez à partir de Q4.4.
 
 # %% [markdown]
 # **Réponse Q4.3 :**
@@ -293,11 +314,17 @@ spark.conf.set("spark.sql.adaptive.enabled", False)
 # a baissé, est-ce parce que le déséquilibre a été corrigé ? Avec si peu de
 # tâches, le rapport max/médiane a-t-il encore un sens ?
 #
+# *Où regarder :* la première ligne de `profil_taches` (nombre de tâches) ;
+# Spark UI › *SQL / DataFrame*, dernière requête, bloc `AQEShuffleRead`.
+#
 # **Q4.7** AQE sait aussi **découper** une partition trop lourde
 # (`skewJoin.enabled = true` ci-dessus). Il ne l'a pas fait ici : d'après les
 # deux seuils affichés et le volume de shuffle mesuré, expliquez pourquoi.
 # Faut-il encore comprendre le déséquilibre quand on a AQE ? Que se passe-t-il
 # si une seule clé produit plus de données que la mémoire d'un executor ?
+#
+# *Où regarder :* les trois réglages affichés en fin de cellule ; la colonne
+# *shuffle write* du tableau de métriques.
 
 # %% [markdown]
 # **Réponse Q4.6 :**
@@ -347,9 +374,17 @@ trois_requetes(charge, "SANS cache")
 trois_requetes(charge, "AVEC cache")
 
 # %% [markdown]
-# **Q4.8** Sur quelle partie du travail porte le gain ? Vérifiez l'onglet
-# *Storage* de la Spark UI. Que se passerait-il si `charge` ne tenait pas en
-# mémoire ?
+# **Q4.8** Relevez le total des 3 requêtes sans cache et avec cache.
+# Qu'est-ce que chaque requête n'a plus besoin de refaire une fois `charge` en
+# cache : relire le Parquet, refaire la jointure, refaire l'agrégation ?
+# Que se passerait-il si `charge` ne tenait pas en mémoire ? (Rappel :
+# `MEMORY_AND_DISK`, séquence 2.)
+#
+# *Où regarder :* les lignes `[chrono] 3 requêtes SANS cache` et `[chrono] 3
+# requêtes AVEC cache` ; Spark UI › *Storage*, colonnes *Fraction Cached* et
+# *Size in Memory* ; Spark UI › *SQL / DataFrame* : le plan d'une requête
+# avec cache part d'un `InMemoryTableScan`, et non plus de la lecture du
+# Parquet.
 
 # %% [markdown]
 # **Réponse Q4.8 :**
